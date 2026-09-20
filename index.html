@@ -354,19 +354,35 @@ hiddenInput.addEventListener('change', () => {
   saveMeta.textContent = '저장할 폴더 이름을 입력하고 [저장]을 누르세요.';
 });
 
+async function buildWorkerBlobURL(){
+  const base = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+  const [constText, errorsText, workerText] = await Promise.all([
+    fetch(`${base}/const.js`).then(r => r.text()),
+    fetch(`${base}/errors.js`).then(r => r.text()),
+    fetch(`${base}/worker.js`).then(r => r.text()),
+  ]);
+  const workerBody = workerText.replace(/^import[^\n]*\n/gm, '');
+  const combined = `${constText}\n${errorsText}\n${workerBody}`;
+  return URL.createObjectURL(new Blob([combined], { type: 'text/javascript' }));
+}
+
 // ── ffmpeg 로드 (최초 1회) ────────────────────────────────
 async function ensureFfmpeg(){
   if (ffmpegReady) return;
   log('⏳ ffmpeg 코어 파일 받는 중... (최초 1회, 수십 MB라 수십 초 걸릴 수 있음)');
   ffmpeg = new FFmpeg();
-  ffmpeg.on('log', () => {}); // ffmpeg 내부 로그는 숨김
+  ffmpeg.on('log', () => {});
   const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
   const coreURL = await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript');
   const wasmURL = await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm');
   log('  ✓ 코어 파일 준비 완료');
 
+  log('⏳ 워커 스크립트 준비 중...');
+  const classWorkerURL = await buildWorkerBlobURL();
+  log('  ✓ 워커 스크립트 준비 완료');
+
   log('⏳ ffmpeg 엔진 초기화 중...');
-  await ffmpeg.load({ coreURL, wasmURL });
+  await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
   ffmpegReady = true;
   log('✅ ffmpeg 엔진 준비 완료', 'ok');
 }
@@ -386,7 +402,7 @@ async function generateGif(inName, outName, fps, w, h, speed){
   const filterComplex = buildFilterComplex(fps, w, h, speed);
   await ffmpeg.exec(['-i', inName, '-filter_complex', filterComplex, outName]);
   const data = await ffmpeg.readFile(outName);
-  return data; // Uint8Array
+  return data;
 }
 
 // ── 메인 처리 ─────────────────────────────────────────────
@@ -455,20 +471,18 @@ saveBtn.addEventListener('click', async () => {
       let data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
       log(`  1차 생성: ${sizeMB(data.length).toFixed(2)}MB`);
 
-      // Step 2: fps 감소 (5fps 까지)
       while (sizeMB(data.length) > MAX_SIZE_MB && curFps > 5){
         curFps -= 2;
         log(`  ⚠️  ${sizeMB(data.length).toFixed(2)}MB → FPS ${curFps}으로 재생성`, 'warn');
         data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
       }
 
-      // Step 3: 해상도 감소 (최후 수단)
       while (sizeMB(data.length) > MAX_SIZE_MB){
         curW = Math.round(curW * 0.9);
         curH = Math.round(curH * 0.9);
         log(`  ⚠️  ${sizeMB(data.length).toFixed(2)}MB → ${curW}x${curH}으로 재생성`, 'warn');
         data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
-        if (curW < 60) break; // 무한루프 방지
+        if (curW < 60) break;
       }
 
       zip.file(`[gif]${baseName}.gif`, data);
