@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>움짤 생성기</title>
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#111111;
+    --line:#3a3a3a;
+    --ink:#ffffff;
+    --ink-dim:#8a8a8a;
+    --accent:#ffffff;
+    --accent-ink:#000000;
+    --accent-dim:#2a2a2a;
+    --accent-dim-ink:#6a6a6a;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:56px 20px;
+  }
+  .wrap{width:100%;max-width:640px;}
+  .header-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:38px;
+  }
+  .handle{
+    font-weight:800;
+    font-size:20px;
+    letter-spacing:-0.02em;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  h1{
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .row{
+    display:flex;
+    gap:10px;
+    align-items:stretch;
+    height:48px;
+    margin-bottom:12px;
+  }
+  .btn{
+    flex:0 0 96px;
+    width:96px;
+    height:100%;
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    border-radius:6px;
+    padding:0 18px;
+    font-size:14px;
+    font-weight:600;
+    text-align:center;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:filter .12s ease;
+  }
+  .btn:hover{filter:brightness(0.85);}
+  .btn:active{filter:brightness(0.7);}
+  .btn:disabled{
+    opacity:0.35;
+    cursor:not-allowed;
+  }
+  .tag{
+    flex:0 0 96px;
+    width:96px;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:transparent;
+    color:var(--ink-dim);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:0 12px;
+    font-size:13px;
+    font-weight:600;
+    text-align:center;
+    white-space:nowrap;
+  }
+  .settings-field{
+    flex:1;
+    height:100%;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:0 14px;
+    min-width:0;
+  }
+  .settings-field input{
+    width:64px;
+    height:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--ink);
+    font-size:14px;
+    text-align:center;
+  }
+  .settings-field span.unit{
+    color:var(--ink-dim);
+    font-size:13px;
+  }
+  .field{
+    flex:1;
+    height:100%;
+    display:flex;
+    align-items:center;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:0 14px;
+    min-width:0;
+  }
+  .field input{
+    width:100%;
+    height:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--ink);
+    font-size:14px;
+  }
+  .field input::placeholder{color:#555555;}
+  .field.readonly{color:var(--ink-dim);font-size:13px;}
+  .field.readonly span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .meta{
+    font-size:12px;
+    color:var(--ink-dim);
+    margin:2px 2px 24px;
+    min-height:16px;
+  }
+  .log-label{
+    font-size:12px;
+    color:var(--ink-dim);
+    margin:0 2px 8px;
+    display:flex;
+    justify-content:space-between;
+  }
+  .log{
+    background:#0a0a0a;
+    border:1px solid var(--line);
+    border-radius:6px;
+    height:340px;
+    overflow-y:auto;
+    padding:14px 16px;
+    font-family:var(--mono);
+    font-size:12.5px;
+    line-height:1.7;
+    white-space:pre-wrap;
+    word-break:break-all;
+  }
+  .log .line{color:var(--ink-dim);}
+  .log .line.ok{color:var(--ink);font-weight:600;}
+  .log .line.warn{color:var(--ink-dim);font-weight:600;}
+  .log .line.err{color:var(--ink);font-weight:700;}
+  .log .line.head{color:var(--ink);}
+  .progress-bar{
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+    overflow:hidden;
+    margin-top:14px;
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    transition:width .25s ease;
+  }
+  footer{
+    margin-top:18px;
+    font-size:11px;
+    color:#5a5a5a;
+    text-align:right;
+  }
+  .file-warning{
+    display:none;
+    background:var(--panel);
+    border:1px solid var(--ink);
+    border-radius:6px;
+    padding:16px 18px;
+    margin-bottom:24px;
+    font-size:13px;
+    line-height:1.7;
+  }
+  .file-warning.show{display:block;}
+  .file-warning b{color:var(--ink);}
+  .file-warning code{
+    display:block;
+    background:#000000;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:8px 10px;
+    margin-top:8px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink);
+    white-space:pre;
+    overflow-x:auto;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header-row">
+    <h1>움짤 생성기</h1>
+    <span class="handle">@_whymv</span>
+  </div>
+
+  <div class="file-warning" id="fileWarning">
+    <b>⚠️ 지금 file://로 직접 열려 있습니다.</b> 이 상태에서는 브라우저 보안 정책 때문에 변환 엔진이 멈춥니다.<br>
+    터미널에서 이 파일이 있는 폴더로 이동한 뒤 아래 명령어를 실행하고, 뜨는 주소(http://localhost:8000)로 접속해주세요.
+    <code>python3 -m http.server 8000</code>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="pickBtn">입력</button>
+    <div class="field readonly"><span id="pathLabel">폴더를 선택하세요</span></div>
+  </div>
+  <div class="meta" id="pickMeta">[입력]을 눌러 영상 파일이 저장된 폴더를 입력하세요.</div>
+
+  <div class="row">
+    <button class="btn" id="saveBtn" disabled>저장</button>
+    <div class="field"><input id="folderName" type="text" placeholder="저장할 폴더 이름 (예: 0917_움짤)"></div>
+  </div>
+  <div class="meta" id="saveMeta">먼저 입력 폴더를 선택하세요.</div>
+
+  <div class="row">
+    <div class="tag">해상도</div>
+    <div class="settings-field">
+      <input id="widthInput" type="number" min="10" step="1" value="350">
+      <span class="unit">×</span>
+      <input id="heightInput" type="number" min="10" step="1" value="500">
+      <span class="unit">px</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="tag">재생속도</div>
+    <div class="settings-field">
+      <input id="speedInput" type="number" min="0.1" step="0.1" value="1.5">
+      <span class="unit">배속</span>
+    </div>
+  </div>
+
+  <div class="log-label"><span>진행현황</span><span id="counter"></span></div>
+  <div class="log" id="log"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <footer>fps 30 · 색보정 ON (notebook 기본값)</footer>
+</div>
+
+<script type="module">
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
+import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js";
+import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
+
+// ── 설정 (노트북 기본값, 해상도/재생속도는 UI에서 조절) ────
+const MAX_SIZE_MB   = 20;
+const TARGET_FPS    = 30;
+const COLOR_FIX      = true;
+const SATURATION     = 1.05;
+const GAMMA_R        = 1.03;
+const GAMMA_B        = 0.97;
+const VIDEO_EXT = ['.mov', '.mp4', '.m4v', '.avi', '.mkv'];
+
+const pickBtn   = document.getElementById('pickBtn');
+const saveBtn   = document.getElementById('saveBtn');
+const pathLabel = document.getElementById('pathLabel');
+const pickMeta  = document.getElementById('pickMeta');
+const saveMeta  = document.getElementById('saveMeta');
+const folderNameInput = document.getElementById('folderName');
+const widthInput  = document.getElementById('widthInput');
+const heightInput = document.getElementById('heightInput');
+const speedInput  = document.getElementById('speedInput');
+const logEl     = document.getElementById('log');
+const counterEl = document.getElementById('counter');
+const progressFill = document.getElementById('progressFill');
+const fileWarning = document.getElementById('fileWarning');
+
+if (location.protocol === 'file:'){
+  fileWarning.classList.add('show');
+}
+
+let selectedFiles = [];
+let ffmpeg = null;
+let ffmpegReady = false;
+
+function log(msg, cls){
+  const div = document.createElement('div');
+  div.className = 'line' + (cls ? ' ' + cls : '');
+  div.textContent = msg;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sizeMB(bytes){ return bytes / (1024*1024); }
+
+// ── 폴더 선택 (webkitdirectory) ──────────────────────────
+const hiddenInput = document.createElement('input');
+hiddenInput.type = 'file';
+hiddenInput.webkitdirectory = true;
+hiddenInput.multiple = true;
+hiddenInput.style.display = 'none';
+document.body.appendChild(hiddenInput);
+
+pickBtn.addEventListener('click', () => hiddenInput.click());
+
+hiddenInput.addEventListener('change', () => {
+  const files = Array.from(hiddenInput.files).filter(f =>
+    VIDEO_EXT.some(ext => f.name.toLowerCase().endsWith(ext))
+  );
+  selectedFiles = files;
+
+  if (files.length === 0){
+    pathLabel.textContent = '폴더를 선택하세요';
+    pickMeta.textContent = '⚠️ 이 폴더에는 영상 파일이 없습니다.';
+    saveBtn.disabled = true;
+    saveMeta.textContent = '먼저 영상이 있는 폴더를 선택하세요.';
+    return;
+  }
+
+  const rel = files[0].webkitRelativePath || files[0].name;
+  const folder = rel.split('/')[0];
+  pathLabel.textContent = folder + '/';
+  pickMeta.textContent = `${files.length}개 영상 파일 감지됨`;
+  saveBtn.disabled = false;
+  saveMeta.textContent = '저장할 폴더 이름을 입력하고 [저장]을 누르세요.';
+});
+
+// ── ffmpeg 로드 (최초 1회) ────────────────────────────────
+async function ensureFfmpeg(){
+  if (ffmpegReady) return;
+  log('⏳ ffmpeg 코어 파일 받는 중... (최초 1회, 수십 MB라 수십 초 걸릴 수 있음)');
+  ffmpeg = new FFmpeg();
+  ffmpeg.on('log', () => {}); // ffmpeg 내부 로그는 숨김
+  const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+  const coreURL = await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript');
+  const wasmURL = await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm');
+  log('  ✓ 코어 파일 준비 완료');
+
+  log('⏳ ffmpeg 엔진 초기화 중...');
+  await ffmpeg.load({ coreURL, wasmURL });
+  ffmpegReady = true;
+  log('✅ ffmpeg 엔진 준비 완료', 'ok');
+}
+
+function buildFilterComplex(fps, w, h, speed){
+  const filters = [];
+  if (speed !== 1.0) filters.push(`setpts=PTS/${speed}`);
+  filters.push(`fps=${fps}`);
+  if (COLOR_FIX) filters.push(`eq=saturation=${SATURATION}:gamma_r=${GAMMA_R}:gamma_b=${GAMMA_B}`);
+  const rangeOpt = COLOR_FIX ? ':in_range=limited:out_range=full' : '';
+  filters.push(`scale=${w}:${h}:flags=lanczos+accurate_rnd+full_chroma_int${rangeOpt}`);
+  const vf = filters.join(',');
+  return `[0:v]${vf},split[s0][s1];[s0]palettegen=max_colors=256:reserve_transparent=0:stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a`;
+}
+
+async function generateGif(inName, outName, fps, w, h, speed){
+  const filterComplex = buildFilterComplex(fps, w, h, speed);
+  await ffmpeg.exec(['-i', inName, '-filter_complex', filterComplex, outName]);
+  const data = await ffmpeg.readFile(outName);
+  return data; // Uint8Array
+}
+
+// ── 메인 처리 ─────────────────────────────────────────────
+saveBtn.addEventListener('click', async () => {
+  const folderName = folderNameInput.value.trim();
+  if (!folderName){
+    saveMeta.textContent = '⚠️ 폴더 이름을 입력하세요.';
+    return;
+  }
+  if (selectedFiles.length === 0) return;
+
+  if (location.protocol === 'file:'){
+    fileWarning.classList.add('show');
+    saveMeta.textContent = '⚠️ file://로는 변환할 수 없어요. 위 안내대로 http://로 열어주세요.';
+    return;
+  }
+
+  const TARGET_WIDTH  = parseInt(widthInput.value, 10) || 350;
+  const TARGET_HEIGHT = parseInt(heightInput.value, 10) || 500;
+  const SPEED         = parseFloat(speedInput.value) || 1.0;
+
+  pickBtn.disabled = true;
+  saveBtn.disabled = true;
+  folderNameInput.disabled = true;
+  widthInput.disabled = true;
+  heightInput.disabled = true;
+  speedInput.disabled = true;
+  logEl.innerHTML = '';
+  progressFill.style.width = '0%';
+
+  try{
+    await ensureFfmpeg();
+  }catch(e){
+    log('❌ ffmpeg 엔진 로드 실패: ' + e.message, 'err');
+    log('   → 네트워크가 막혀 있거나(CDN 접근 필요), 이 파일을 브라우저에서 직접(더블클릭으로) 열었는지 확인하세요.', 'err');
+    pickBtn.disabled = false;
+    saveBtn.disabled = false;
+    folderNameInput.disabled = false;
+    widthInput.disabled = false;
+    heightInput.disabled = false;
+    speedInput.disabled = false;
+    return;
+  }
+
+  const speedLabel = SPEED !== 1.0 ? `${SPEED}배속` : '정배속';
+  log(`⚙️  설정: ${speedLabel} / ${TARGET_FPS}fps / ${TARGET_WIDTH}x${TARGET_HEIGHT} / 최대 ${MAX_SIZE_MB}MB`, 'head');
+  log(`🎬 변환 대상: ${selectedFiles.length}개 파일`, 'head');
+  log('─'.repeat(50));
+
+  const zip = new JSZip();
+  const total = selectedFiles.length;
+
+  for (let i = 0; i < total; i++){
+    const file = selectedFiles[i];
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const inName = `in_${i}${file.name.slice(file.name.lastIndexOf('.'))}`;
+    const outName = `out_${i}.gif`;
+
+    counterEl.textContent = `${i+1} / ${total}`;
+    log(`\n🎞  Processing: ${file.name}`);
+
+    try{
+      await ffmpeg.writeFile(inName, await fetchFile(file));
+
+      let curFps = TARGET_FPS, curW = TARGET_WIDTH, curH = TARGET_HEIGHT;
+      let data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
+      log(`  1차 생성: ${sizeMB(data.length).toFixed(2)}MB`);
+
+      // Step 2: fps 감소 (5fps 까지)
+      while (sizeMB(data.length) > MAX_SIZE_MB && curFps > 5){
+        curFps -= 2;
+        log(`  ⚠️  ${sizeMB(data.length).toFixed(2)}MB → FPS ${curFps}으로 재생성`, 'warn');
+        data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
+      }
+
+      // Step 3: 해상도 감소 (최후 수단)
+      while (sizeMB(data.length) > MAX_SIZE_MB){
+        curW = Math.round(curW * 0.9);
+        curH = Math.round(curH * 0.9);
+        log(`  ⚠️  ${sizeMB(data.length).toFixed(2)}MB → ${curW}x${curH}으로 재생성`, 'warn');
+        data = await generateGif(inName, outName, curFps, curW, curH, SPEED);
+        if (curW < 60) break; // 무한루프 방지
+      }
+
+      zip.file(`[gif]${baseName}.gif`, data);
+      log(`  ✅ 최종: ${sizeMB(data.length).toFixed(2)}MB  (${curFps}fps, ${curW}x${curH})`, 'ok');
+
+      await ffmpeg.deleteFile(inName);
+      await ffmpeg.deleteFile(outName);
+    }catch(e){
+      log(`  ❌ 실패: ${e.message}`, 'err');
+    }
+
+    progressFill.style.width = `${Math.round(((i+1)/total)*100)}%`;
+  }
+
+  log('\n' + '─'.repeat(50));
+  log('📦 zip 압축 중...', 'head');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${folderName}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  log(`🎉 모든 변환 완료! → 다운로드 폴더에 "${folderName}.zip" 저장됨`, 'ok');
+  counterEl.textContent = '완료';
+
+  pickBtn.disabled = false;
+  saveBtn.disabled = false;
+  folderNameInput.disabled = false;
+  widthInput.disabled = false;
+  heightInput.disabled = false;
+  speedInput.disabled = false;
+});
+</script>
+</body>
+</html>
